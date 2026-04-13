@@ -3,33 +3,22 @@
 This repo is the deployable Docker + UI wrapper for the ChemMon markdown wiki.
 
 The wiki content + API live in the upstream repo and are included here as a pinned git
-submodule so deploy changes do not pollute the wiki source repo.
+submodule (`./chemmon_wiki`) so deploy changes do not pollute the wiki source repo.
 
-## Setup
-
-1. Add the upstream wiki repo as a submodule:
+## Quick Start
 
 ```bash
-git submodule add https://github.com/Chili36/Chemmon_Wiki.git chemmon_wiki
-git submodule update --init --recursive
-```
-
-2. Copy env template and set secrets:
-
-```bash
+git clone --recurse-submodules https://github.com/Chili36/Chemmon_wiki_deploy.git
+cd Chemmon_wiki_deploy
 cp .env.example .env
+# edit .env and set ANTHROPIC_API_KEY
+docker compose up --build
 ```
 
-Required:
-- `ANTHROPIC_API_KEY`
-
-Optional:
-- `OPENAI_API_KEY` (only needed if you set `WIKI_SELECTOR_MODEL` to `gpt-*`)
-
-3. Start:
+If you cloned without submodules, run:
 
 ```bash
-docker compose up --build
+git submodule update --init --recursive
 ```
 
 UI:
@@ -38,6 +27,15 @@ UI:
 API:
 - http://localhost:8005/health
 - http://localhost:8005/wiki/ask
+
+## Configuration
+
+Required:
+- `ANTHROPIC_API_KEY`
+
+Optional:
+- `OPENAI_API_KEY` (only needed if you set `WIKI_SELECTOR_MODEL` to `gpt-*`)
+- `WIKI_SELECTOR_MODEL` / `WIKI_ANSWERER_MODEL`
 
 ## Updating The Wiki Version
 
@@ -51,4 +49,3 @@ cd ..
 git add chemmon_wiki
 git commit -m "Pin ChemMon wiki to <sha-or-tag>"
 ```
-
