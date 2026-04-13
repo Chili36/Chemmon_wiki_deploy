@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    env_file:
+      - .env
+    environment:
+      WIKI_SELECTOR_MODEL: ${WIKI_SELECTOR_MODEL:-claude-3-7-sonnet-latest}
+      WIKI_ANSWERER_MODEL: ${WIKI_ANSWERER_MODEL:-claude-3-7-sonnet-latest}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health').read()\""]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  ui:
+    build:
+      context: ./ui
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+

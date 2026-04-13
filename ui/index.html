@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChemMon Wiki Chat</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="header">
+        <div class="title">ChemMon Wiki Chat</div>
+        <div class="subtitle">Dockerized UI calling <code>/api/wiki/ask</code></div>
+      </header>
+
+      <section id="thread" class="thread" aria-live="polite"></section>
+
+      <form id="composer" class="composer">
+        <textarea
+          id="input"
+          class="input"
+          rows="3"
+          placeholder="Ask a ChemMon reporting question..."
+          autocomplete="off"
+        ></textarea>
+        <div class="actions">
+          <label class="toggle">
+            <input id="useGraphExpansion" type="checkbox" checked />
+            <span>Graph expansion</span>
+          </label>
+          <button id="send" class="send" type="submit">Send</button>
+        </div>
+      </form>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
+
