@@ -4,6 +4,18 @@ const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 const useGraphExpansion = document.getElementById("useGraphExpansion");
 
+function _apiOverrideBase() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = (params.get("api") || "").trim();
+  if (!raw) return null;
+  // Normalize to avoid accidental double-slashes on `${base}/wiki/ask`.
+  return raw.replace(/\/+$/, "");
+}
+
+function _directApiBase() {
+  return _apiOverrideBase() || "http://127.0.0.1:8005";
+}
+
 function addMessage(role, text, meta) {
   const msg = document.createElement("div");
   msg.className = `msg ${role}`;
@@ -42,12 +54,35 @@ async function askWiki(question) {
     use_graph_expansion: !!useGraphExpansion.checked,
   };
 
-  const res = await fetch("/api/wiki/ask", {
+  // Production (docker-compose) runs behind nginx and exposes an /api/* proxy.
+  // For local UI dev without Docker, users can run the API on 127.0.0.1:8005
+  // and this will fall back automatically (or can be forced via `?api=...`).
+  const primaryUrl = "/api/wiki/ask";
+  try {
+    const res = await fetch(primaryUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) return await res.json();
+
+    // If /api/* is not wired up (common when serving the UI with a static
+    // server), fall back to the direct API base.
+    if (res.status !== 404) {
+      const body = await res.text();
+      throw new Error(`HTTP ${res.status}: ${body}`);
+    }
+  } catch (err) {
+    // Network error (no proxy). Fall back below.
+  }
+
+  const fallbackUrl = `${_directApiBase()}/wiki/ask`;
+  const res = await fetch(fallbackUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`HTTP ${res.status}: ${body}`);
@@ -96,4 +131,3 @@ addMessage(
   "Ready. Ask a question about ChemMon reporting. This UI calls /api/wiki/ask.",
   null
 );
-

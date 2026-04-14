@@ -10,7 +10,10 @@
     <main class="wrap">
       <header class="header">
         <div class="title">ChemMon Wiki Chat</div>
-        <div class="subtitle">Dockerized UI calling <code>/api/wiki/ask</code></div>
+        <div class="subtitle">
+          Calls <code>/api/wiki/ask</code> when proxied (Docker). For local dev without Docker, it falls back to
+          <code>http://127.0.0.1:8005/wiki/ask</code> or <code>?api=http://host:8005</code>.
+        </div>
       </header>
 
       <section id="thread" class="thread" aria-live="polite"></section>
@@ -36,4 +39,3 @@
     <script src="/app.js"></script>
   </body>
 </html>
-
