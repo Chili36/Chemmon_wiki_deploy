@@ -166,6 +166,10 @@ function summarizeMeta(resp) {
   if (total && typeof total.total_tracked_tokens === "number") {
     meta.push({ text: `tokens: ${total.total_tracked_tokens}` });
   }
+  if (total && typeof total.request_wall_time_ms === "number") {
+    const secs = total.request_wall_time_ms / 1000;
+    meta.push({ text: `time: ${secs.toFixed(1)}s` });
+  }
   if (total && typeof total.total_cost_usd === "number") {
     meta.push({ text: `cost: $${total.total_cost_usd.toFixed(4)}` });
   }
