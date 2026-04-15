@@ -107,7 +107,7 @@ function summarizeMeta(resp) {
     meta.push({ text: `cost: $${total.total_cost_usd.toFixed(4)}` });
   }
   if (resp.citations && resp.citations.length) {
-    meta.push({ text: `citations: ${resp.citations.join(", ")}` });
+    meta.push({ text: `citations: ${resp.citations.length}` });
   }
   return meta.length ? meta : null;
 }
