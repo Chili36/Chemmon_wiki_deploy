@@ -112,20 +112,51 @@ function summarizeMeta(resp) {
   return meta.length ? meta : null;
 }
 
+function addLoadingTurn() {
+  const msg = document.createElement("div");
+  msg.className = "msg assistant loading";
+  msg.setAttribute("data-loading", "true");
+
+  const roleEl = document.createElement("div");
+  roleEl.className = "role";
+  roleEl.textContent = "Wiki";
+
+  const textEl = document.createElement("div");
+  textEl.className = "text";
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement("span");
+    d.textContent = "\u2022";
+    textEl.appendChild(d);
+  }
+
+  msg.appendChild(roleEl);
+  msg.appendChild(textEl);
+  thread.appendChild(msg);
+  thread.scrollTop = thread.scrollHeight;
+  return msg;
+}
+
+function removeLoadingTurn(msg) {
+  if (msg && msg.parentNode) msg.parentNode.removeChild(msg);
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const q = input.value.trim();
   if (!q) return;
   input.value = "";
-  hideEmptyState();
 
+  hideEmptyState();
   addMessage("user", q);
 
   sendBtn.disabled = true;
+  const loadingMsg = addLoadingTurn();
   try {
     const resp = await askWiki(q);
+    removeLoadingTurn(loadingMsg);
     addMessage("assistant", resp.answer || "(empty)", summarizeMeta(resp));
   } catch (err) {
+    removeLoadingTurn(loadingMsg);
     addMessage("assistant", String(err), [{ text: "error", bad: true }]);
   } finally {
     sendBtn.disabled = false;
