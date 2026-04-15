@@ -117,6 +117,7 @@ form.addEventListener("submit", async (e) => {
   const q = input.value.trim();
   if (!q) return;
   input.value = "";
+  hideEmptyState();
 
   addMessage("user", q);
 
@@ -132,8 +133,10 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-addMessage(
-  "assistant",
-  "Ready. Ask a question about ChemMon reporting. This UI calls /api/wiki/ask.",
-  null
-);
+const emptyState = document.getElementById("empty-state");
+
+function hideEmptyState() {
+  if (emptyState && !emptyState.classList.contains("hidden")) {
+    emptyState.classList.add("hidden");
+  }
+}
