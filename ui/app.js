@@ -116,6 +116,17 @@ async function* parseSSE(body) {
   }
 }
 
+async function* consumeAskResponse(res) {
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("text/event-stream") && res.body) {
+    yield* parseSSE(res.body);
+    return;
+  }
+  // Backend ignored the stream flag — degrade to a single done event.
+  const data = await res.json();
+  yield { event: "done", data: { type: "done", response: data } };
+}
+
 async function* askWikiStream(question) {
   const payload = {
     question,
@@ -123,42 +134,29 @@ async function* askWikiStream(question) {
     use_graph_expansion: !!useGraphExpansion.checked,
     stream: true,
   };
+  const fetchOpts = {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+    body: JSON.stringify(payload),
+  };
 
-  // Prefer the /api/* reverse-proxy path (production docker-compose); fall
-  // back to the direct API base for local dev without the proxy.
-  const urls = ["/api/wiki/ask", `${_directApiBase()}/wiki/ask`];
-  let lastErr = null;
-  for (const url of urls) {
-    let res;
-    try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      lastErr = err;
-      continue;
-    }
-
-    if (res.status === 404) continue;
-    if (!res.ok) {
-      const bodyText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${bodyText}`);
-    }
-
-    const contentType = res.headers.get("content-type") || "";
-    if (contentType.includes("text/event-stream") && res.body) {
-      yield* parseSSE(res.body);
+  // Try the /api/* reverse-proxy path first (production docker-compose).
+  // Any failure here silently falls through to the direct API base.
+  try {
+    const res = await fetch("/api/wiki/ask", fetchOpts);
+    if (res.ok) {
+      yield* consumeAskResponse(res);
       return;
     }
-
-    // Backend ignored the stream flag — degrade to a single "done" event.
-    const data = await res.json();
-    yield { event: "done", data: { type: "done", response: data } };
-    return;
+  } catch (_err) {
+    // Network error — fall through.
   }
-  throw lastErr || new Error("Wiki API unreachable");
+
+  const res = await fetch(`${_directApiBase()}/wiki/ask`, fetchOpts);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
+  yield* consumeAskResponse(res);
 }
 
 function summarizeMeta(resp) {
