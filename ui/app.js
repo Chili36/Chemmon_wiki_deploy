@@ -84,47 +84,81 @@ function renderCitationChips(resp) {
   return wrap;
 }
 
-async function askWiki(question) {
+async function* parseSSE(body) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    while (true) {
+      const idx = buffer.indexOf("\n\n");
+      if (idx === -1) break;
+      const raw = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+
+      let event = "message";
+      let dataStr = "";
+      for (const line of raw.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataStr += line.slice(5).trim();
+      }
+      if (!dataStr) continue;
+      try {
+        yield { event, data: JSON.parse(dataStr) };
+      } catch (err) {
+        console.warn("SSE parse error", err, dataStr);
+      }
+    }
+  }
+}
+
+async function* askWikiStream(question) {
   const payload = {
     question,
     max_pages: 6,
     use_graph_expansion: !!useGraphExpansion.checked,
+    stream: true,
   };
 
-  // Production (docker-compose) runs behind nginx and exposes an /api/* proxy.
-  // For local UI dev without Docker, users can run the API on 127.0.0.1:8005
-  // and this will fall back automatically (or can be forced via `?api=...`).
-  const primaryUrl = "/api/wiki/ask";
-  try {
-    const res = await fetch(primaryUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (res.ok) return await res.json();
-
-    // If /api/* is not wired up (common when serving the UI with a static
-    // server), fall back to the direct API base.
-    if (res.status !== 404) {
-      const body = await res.text();
-      throw new Error(`HTTP ${res.status}: ${body}`);
+  // Prefer the /api/* reverse-proxy path (production docker-compose); fall
+  // back to the direct API base for local dev without the proxy.
+  const urls = ["/api/wiki/ask", `${_directApiBase()}/wiki/ask`];
+  let lastErr = null;
+  for (const url of urls) {
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      lastErr = err;
+      continue;
     }
-  } catch (err) {
-    // Network error (no proxy). Fall back below.
-  }
 
-  const fallbackUrl = `${_directApiBase()}/wiki/ask`;
-  const res = await fetch(fallbackUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`HTTP ${res.status}: ${body}`);
+    if (res.status === 404) continue;
+    if (!res.ok) {
+      const bodyText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${bodyText}`);
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("text/event-stream") && res.body) {
+      yield* parseSSE(res.body);
+      return;
+    }
+
+    // Backend ignored the stream flag — degrade to a single "done" event.
+    const data = await res.json();
+    yield { event: "done", data: { type: "done", response: data } };
+    return;
   }
-  return await res.json();
+  throw lastErr || new Error("Wiki API unreachable");
 }
 
 function summarizeMeta(resp) {
@@ -256,6 +290,17 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+function renderMarkdownInto(el, text) {
+  while (el.firstChild) el.removeChild(el.firstChild);
+  if (window.marked && window.DOMPurify) {
+    const html = window.marked.parse(text || "");
+    const frag = window.DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
+    el.appendChild(frag);
+  } else {
+    el.textContent = text || "";
+  }
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const q = input.value.trim();
@@ -267,13 +312,60 @@ form.addEventListener("submit", async (e) => {
 
   sendBtn.disabled = true;
   const loadingMsg = addLoadingTurn();
-  try {
-    const resp = await askWiki(q);
+
+  let assistantMsg = null;
+  let answerEl = null;
+  let answerText = "";
+
+  function ensureAssistantMsg() {
+    if (assistantMsg) return;
     removeLoadingTurn(loadingMsg);
-    addMessage("assistant", resp.answer || "(empty)", summarizeMeta(resp), resp);
+    assistantMsg = document.createElement("div");
+    assistantMsg.className = "msg assistant";
+    const roleEl = document.createElement("div");
+    roleEl.className = "role";
+    roleEl.textContent = "Wiki";
+    answerEl = document.createElement("div");
+    answerEl.className = "text";
+    assistantMsg.appendChild(roleEl);
+    assistantMsg.appendChild(answerEl);
+    thread.appendChild(assistantMsg);
+    thread.scrollTop = thread.scrollHeight;
+  }
+
+  try {
+    for await (const { event, data } of askWikiStream(q)) {
+      if (event === "meta") {
+        ensureAssistantMsg();
+      } else if (event === "delta") {
+        ensureAssistantMsg();
+        answerText += data.text || "";
+        renderMarkdownInto(answerEl, answerText);
+        thread.scrollTop = thread.scrollHeight;
+      } else if (event === "done") {
+        ensureAssistantMsg();
+        const resp = data.response;
+        if (resp && typeof resp.answer === "string") {
+          answerText = resp.answer;
+          renderMarkdownInto(answerEl, answerText);
+        }
+        if (resp && Array.isArray(resp.citations) && resp.citations.length) {
+          assistantMsg.appendChild(renderCitationChips(resp));
+        }
+        const meta = summarizeMeta(resp);
+        if (meta) assistantMsg.appendChild(renderMetaPills(meta));
+        thread.scrollTop = thread.scrollHeight;
+      } else if (event === "error") {
+        throw new Error(data.message || "Stream error");
+      }
+    }
   } catch (err) {
     removeLoadingTurn(loadingMsg);
-    addMessage("assistant", String(err), [{ text: "error", bad: true }]);
+    if (assistantMsg) {
+      assistantMsg.appendChild(renderMetaPills([{ text: `error: ${err.message || err}`, bad: true }]));
+    } else {
+      addMessage("assistant", String(err), [{ text: "error", bad: true }]);
+    }
   } finally {
     sendBtn.disabled = false;
     input.focus();
