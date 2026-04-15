@@ -459,3 +459,28 @@ body.drawer-open .wrap > .composer { max-width: 720px; margin-left: auto; margin
 @media (prefers-reduced-motion: reduce) {
   .drawer { transition: none; }
 }
+
+.drawer-footer {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.drawer-suggest {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.drawer-suggest:hover,
+.drawer-suggest:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.drawer-suggest:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

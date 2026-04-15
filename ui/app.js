@@ -178,6 +178,9 @@ const drawerContent = document.getElementById("drawer-content");
 const drawerRelated = document.getElementById("drawer-related");
 const drawerPageEl = document.getElementById("drawer-page");
 const drawerCloseBtn = document.getElementById("drawer-close");
+const drawerSuggest = document.getElementById("drawer-suggest");
+
+const SUGGEST_REPO = "Chili36/Chemmon_Wiki";
 
 let activeChip = null;
 let lastFocusBeforeDrawer = null;
@@ -218,6 +221,12 @@ function openDrawer(chip, resp, pageName) {
     drawerRelated.appendChild(span);
   }
   drawerEl.querySelector(".drawer-related-wrap").style.display = related.length ? "block" : "none";
+
+  const issueParams = new URLSearchParams({
+    title: `Suggest change to ${pageName}`,
+    body: `<!-- Describe the change you'd like to propose for ${pageName} -->\n`,
+  });
+  drawerSuggest.href = `https://github.com/${SUGGEST_REPO}/issues/new?${issueParams.toString()}`;
 
   lastFocusBeforeDrawer = chip;
   drawerEl.setAttribute("aria-hidden", "false");
