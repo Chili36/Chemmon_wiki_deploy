@@ -62,44 +62,73 @@ code, pre {
 }
 
 .thread {
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.26);
-  border-radius: 14px;
-  padding: 14px;
-  overflow: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
 .msg {
-  display: grid;
-  gap: 8px;
-  padding: 12px 12px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  margin: 10px 0;
-}
-
-.msg.user {
-  background: rgba(125, 211, 252, 0.10);
-  border-color: rgba(125, 211, 252, 0.18);
-}
-
-.msg.assistant {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
 }
 
 .role {
-  font-size: 12px;
-  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
 }
 
+.msg.user .role { color: var(--ink-soft); }
+.msg.assistant .role { color: var(--accent); }
+
 .text {
-  white-space: pre-wrap;
-  line-height: 1.38;
-  font-size: 14px;
+  font-family: var(--serif);
+  color: var(--ink);
+  white-space: normal;
 }
+
+.msg.user .text {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.msg.assistant .text {
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* Markdown-rendered children inherit serif but code stays mono */
+.msg.assistant .text h1,
+.msg.assistant .text h2,
+.msg.assistant .text h3,
+.msg.assistant .text p,
+.msg.assistant .text ul,
+.msg.assistant .text ol,
+.msg.assistant .text li,
+.msg.assistant .text blockquote {
+  font-family: inherit;
+  margin: 0.5em 0;
+}
+
+.msg.assistant .text h2 { font-size: 1.15em; font-weight: 600; }
+.msg.assistant .text h3 { font-size: 1.05em; font-weight: 600; }
+.msg.assistant .text ul,
+.msg.assistant .text ol { padding-left: 20px; }
+.msg.assistant .text code { font-family: var(--mono); font-size: 0.9em; background: var(--accent-soft); padding: 0.5px 4px; border-radius: 3px; }
+.msg.assistant .text pre { background: #f5f1ea; border: 1px solid var(--rule); border-radius: 4px; padding: 10px; overflow-x: auto; }
+.msg.assistant .text pre code { background: transparent; padding: 0; }
+.msg.assistant .text a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 
 .meta {
   display: flex;
