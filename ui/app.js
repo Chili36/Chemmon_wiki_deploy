@@ -41,6 +41,11 @@ function addMessage(role, text, meta, resp) {
     msg.appendChild(renderCitationChips(resp));
   }
 
+  if (role === "assistant" && resp) {
+    const neighbors = renderNeighborChips(resp);
+    if (neighbors) msg.appendChild(neighbors);
+  }
+
   if (meta) {
     msg.appendChild(renderMetaPills(meta));
   }
@@ -66,22 +71,46 @@ function renderCitationChips(resp) {
   const wrap = document.createElement("div");
   wrap.className = "citations";
   for (const name of resp.citations) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "citation-chip";
-    chip.textContent = name;
-    chip.setAttribute("aria-label", `Open source: ${name}`);
-    chip.dataset.pageName = name;
-    chip.addEventListener("click", () => {
-      if (activeChip === chip) {
-        closeDrawer();
-      } else {
-        openDrawer(chip, resp, name);
-      }
-    });
-    wrap.appendChild(chip);
+    wrap.appendChild(buildChip(resp, name, "citation-chip", `Open source: ${name}`));
   }
   return wrap;
+}
+
+function renderNeighborChips(resp) {
+  const expansion = resp.trace && resp.trace.graph_expansion;
+  if (!expansion || !expansion.enabled) return null;
+  const neighbors = Array.isArray(expansion.neighbors_added) ? expansion.neighbors_added : [];
+  const cited = new Set(resp.citations || []);
+  const uncited = neighbors.filter((n) => !cited.has(n));
+  if (!uncited.length) return null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "neighbors";
+  const label = document.createElement("span");
+  label.className = "neighbors-label";
+  label.textContent = "Also consulted";
+  wrap.appendChild(label);
+  for (const name of uncited) {
+    wrap.appendChild(buildChip(resp, name, "citation-chip neighbor-chip", `Open consulted page: ${name}`));
+  }
+  return wrap;
+}
+
+function buildChip(resp, name, className, ariaLabel) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = className;
+  chip.textContent = name;
+  chip.setAttribute("aria-label", ariaLabel);
+  chip.dataset.pageName = name;
+  chip.addEventListener("click", () => {
+    if (activeChip === chip) {
+      closeDrawer();
+    } else {
+      openDrawer(chip, resp, name);
+    }
+  });
+  return chip;
 }
 
 async function* parseSSE(body) {
@@ -175,6 +204,10 @@ function summarizeMeta(resp) {
   }
   if (resp.citations && resp.citations.length) {
     meta.push({ text: `citations: ${resp.citations.length}` });
+  }
+  const expansion = resp.trace && resp.trace.graph_expansion;
+  if (expansion && expansion.enabled && expansion.neighbors_count) {
+    meta.push({ text: `neighbors: ${expansion.neighbors_count}` });
   }
   return meta.length ? meta : null;
 }
@@ -353,6 +386,10 @@ form.addEventListener("submit", async (e) => {
         }
         if (resp && Array.isArray(resp.citations) && resp.citations.length) {
           assistantMsg.appendChild(renderCitationChips(resp));
+        }
+        if (resp) {
+          const neighborEl = renderNeighborChips(resp);
+          if (neighborEl) assistantMsg.appendChild(neighborEl);
         }
         const meta = summarizeMeta(resp);
         if (meta) assistantMsg.appendChild(renderMetaPills(meta));

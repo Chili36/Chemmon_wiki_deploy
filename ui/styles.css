@@ -327,6 +327,32 @@ body.drawer-open .wrap > .composer { max-width: 720px; margin-left: auto; margin
   color: var(--accent);
 }
 
+.neighbors {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.neighbors-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 2px;
+}
+
+.citation-chip.neighbor-chip {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+
+.citation-chip.neighbor-chip.active {
+  border-style: solid;
+}
+
 .drawer {
   position: fixed;
   top: 0;
