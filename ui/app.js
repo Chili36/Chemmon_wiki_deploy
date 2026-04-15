@@ -73,7 +73,11 @@ function renderCitationChips(resp) {
     chip.setAttribute("aria-label", `Open source: ${name}`);
     chip.dataset.pageName = name;
     chip.addEventListener("click", () => {
-      console.log("citation clicked:", name, resp.pages);
+      if (activeChip === chip) {
+        closeDrawer();
+      } else {
+        openDrawer(chip, resp, name);
+      }
     });
     wrap.appendChild(chip);
   }
@@ -166,6 +170,82 @@ function addLoadingTurn() {
 function removeLoadingTurn(msg) {
   if (msg && msg.parentNode) msg.parentNode.removeChild(msg);
 }
+
+const drawerEl = document.getElementById("drawer");
+const drawerTitle = document.getElementById("drawer-title");
+const drawerSummary = document.getElementById("drawer-summary");
+const drawerContent = document.getElementById("drawer-content");
+const drawerRelated = document.getElementById("drawer-related");
+const drawerPageEl = document.getElementById("drawer-page");
+const drawerCloseBtn = document.getElementById("drawer-close");
+
+let activeChip = null;
+let lastFocusBeforeDrawer = null;
+
+function findPage(resp, pageName) {
+  if (!resp || !Array.isArray(resp.pages)) return null;
+  return resp.pages.find((p) => p.page_name === pageName) || null;
+}
+
+function openDrawer(chip, resp, pageName) {
+  const page = findPage(resp, pageName);
+  if (!page) return;
+
+  if (activeChip && activeChip !== chip) activeChip.classList.remove("active");
+  chip.classList.add("active");
+  activeChip = chip;
+
+  drawerPageEl.textContent = pageName;
+  drawerTitle.textContent = page.title || pageName;
+  drawerSummary.textContent = page.summary || "";
+
+  while (drawerContent.firstChild) drawerContent.removeChild(drawerContent.firstChild);
+  if (window.marked && window.DOMPurify) {
+    const html = window.marked.parse(page.content || "");
+    const frag = window.DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
+    drawerContent.appendChild(frag);
+  } else {
+    drawerContent.textContent = page.content || "";
+  }
+
+  while (drawerRelated.firstChild) drawerRelated.removeChild(drawerRelated.firstChild);
+  const related = Array.isArray(page.related) ? page.related : [];
+  for (const rel of related) {
+    const clean = String(rel).replace(/^\[\[|\]\]$/g, "");
+    const span = document.createElement("span");
+    span.className = "related-chip";
+    span.textContent = clean;
+    drawerRelated.appendChild(span);
+  }
+  drawerEl.querySelector(".drawer-related-wrap").style.display = related.length ? "block" : "none";
+
+  lastFocusBeforeDrawer = chip;
+  drawerEl.setAttribute("aria-hidden", "false");
+  document.body.classList.add("drawer-open");
+  drawerCloseBtn.focus();
+}
+
+function closeDrawer() {
+  if (drawerEl.getAttribute("aria-hidden") === "true") return;
+  drawerEl.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("drawer-open");
+  if (activeChip) {
+    activeChip.classList.remove("active");
+    activeChip = null;
+  }
+  if (lastFocusBeforeDrawer && document.contains(lastFocusBeforeDrawer)) {
+    lastFocusBeforeDrawer.focus();
+  }
+  lastFocusBeforeDrawer = null;
+}
+
+drawerCloseBtn.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && drawerEl.getAttribute("aria-hidden") === "false") {
+    e.preventDefault();
+    closeDrawer();
+  }
+});
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
