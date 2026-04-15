@@ -16,7 +16,7 @@ function _directApiBase() {
   return _apiOverrideBase() || "http://127.0.0.1:8005";
 }
 
-function addMessage(role, text, meta) {
+function addMessage(role, text, meta, resp) {
   const msg = document.createElement("div");
   msg.className = `msg ${role}`;
 
@@ -37,20 +37,47 @@ function addMessage(role, text, meta) {
   msg.appendChild(roleEl);
   msg.appendChild(textEl);
 
+  if (role === "assistant" && resp && Array.isArray(resp.citations) && resp.citations.length) {
+    msg.appendChild(renderCitationChips(resp));
+  }
+
   if (meta) {
-    const metaEl = document.createElement("div");
-    metaEl.className = "meta";
-    for (const item of meta) {
-      const pill = document.createElement("span");
-      pill.className = `pill${item.bad ? " bad" : ""}`;
-      pill.textContent = item.text;
-      metaEl.appendChild(pill);
-    }
-    msg.appendChild(metaEl);
+    msg.appendChild(renderMetaPills(meta));
   }
 
   thread.appendChild(msg);
   thread.scrollTop = thread.scrollHeight;
+  return msg;
+}
+
+function renderMetaPills(meta) {
+  const metaEl = document.createElement("div");
+  metaEl.className = "meta";
+  for (const item of meta) {
+    const pill = document.createElement("span");
+    pill.className = `pill${item.bad ? " bad" : ""}`;
+    pill.textContent = item.text;
+    metaEl.appendChild(pill);
+  }
+  return metaEl;
+}
+
+function renderCitationChips(resp) {
+  const wrap = document.createElement("div");
+  wrap.className = "citations";
+  for (const name of resp.citations) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "citation-chip";
+    chip.textContent = name;
+    chip.setAttribute("aria-label", `Open source: ${name}`);
+    chip.dataset.pageName = name;
+    chip.addEventListener("click", () => {
+      console.log("citation clicked:", name, resp.pages);
+    });
+    wrap.appendChild(chip);
+  }
+  return wrap;
 }
 
 async function askWiki(question) {
@@ -154,7 +181,7 @@ form.addEventListener("submit", async (e) => {
   try {
     const resp = await askWiki(q);
     removeLoadingTurn(loadingMsg);
-    addMessage("assistant", resp.answer || "(empty)", summarizeMeta(resp));
+    addMessage("assistant", resp.answer || "(empty)", summarizeMeta(resp), resp);
   } catch (err) {
     removeLoadingTurn(loadingMsg);
     addMessage("assistant", String(err), [{ text: "error", bad: true }]);
