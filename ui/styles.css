@@ -229,7 +229,6 @@ body.drawer-open .wrap > .composer { max-width: 720px; margin-left: auto; margin
 
 @media (max-width: 800px) {
   .wrap { padding: 20px; gap: 18px; }
-  body.drawer-open .wrap { padding: 20px; }
 }
 
 .empty-state {
@@ -437,4 +436,26 @@ body.drawer-open .wrap > .composer { max-width: 720px; margin-left: auto; margin
   font-size: 10px;
   border-radius: 3px;
   background: var(--bg);
+}
+
+@media (max-width: 960px) {
+  body.drawer-open .wrap { padding-right: 40px; }
+  body.drawer-open .wrap > .header,
+  body.drawer-open .wrap > .thread,
+  body.drawer-open .wrap > .composer { max-width: 720px; }
+
+  .drawer {
+    width: 100%;
+    border-left: none;
+  }
+
+  body.drawer-open { overflow: hidden; }
+}
+
+@media (max-width: 800px) {
+  body.drawer-open .wrap { padding: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer { transition: none; }
 }
