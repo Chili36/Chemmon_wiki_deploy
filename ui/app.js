@@ -26,7 +26,13 @@ function addMessage(role, text, meta) {
 
   const textEl = document.createElement("div");
   textEl.className = "text";
-  textEl.textContent = text;
+  if (role === "assistant" && window.marked && window.DOMPurify) {
+    const html = window.marked.parse(text || "");
+    const frag = window.DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
+    textEl.appendChild(frag);
+  } else {
+    textEl.textContent = text;
+  }
 
   msg.appendChild(roleEl);
   msg.appendChild(textEl);
