@@ -121,7 +121,9 @@ async function* parseSSE(body) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    // Normalize CRLF and lone CR to LF so CRLF-terminated streams (common
+    // through proxies) parse the same as bare LF streams.
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, "\n");
 
     while (true) {
       const idx = buffer.indexOf("\n\n");
@@ -298,6 +300,7 @@ function openDrawer(chip, resp, pageName) {
   drawerSuggest.href = `https://github.com/${SUGGEST_REPO}/issues/new?${issueParams.toString()}`;
 
   lastFocusBeforeDrawer = chip;
+  drawerEl.removeAttribute("inert");
   drawerEl.setAttribute("aria-hidden", "false");
   document.body.classList.add("drawer-open");
   drawerCloseBtn.focus();
@@ -306,6 +309,7 @@ function openDrawer(chip, resp, pageName) {
 function closeDrawer() {
   if (drawerEl.getAttribute("aria-hidden") === "true") return;
   drawerEl.setAttribute("aria-hidden", "true");
+  drawerEl.setAttribute("inert", "");
   document.body.classList.remove("drawer-open");
   if (activeChip) {
     activeChip.classList.remove("active");
