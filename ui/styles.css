@@ -180,6 +180,5 @@ code, pre {
 
 @media (max-width: 800px) {
   .wrap { padding: 20px; gap: 18px; }
-  .actions { flex-direction: column; align-items: stretch; }
 }
 
