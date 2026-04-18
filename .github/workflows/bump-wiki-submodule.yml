@@ -1,0 +1,46 @@
+name: Bump wiki submodule
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Update submodule to latest main
+        run: |
+          cd chemmon_wiki
+          git fetch origin main
+          git checkout origin/main
+          cd ..
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet chemmon_wiki; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            SHA=$(cd chemmon_wiki && git rev-parse --short HEAD)
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          WIKI_SHA: ${{ steps.diff.outputs.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add chemmon_wiki
+          git commit -m "Pin ChemMon wiki to ${WIKI_SHA}"
+          git push
