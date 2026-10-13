@@ -35,7 +35,7 @@ Required:
 
 Optional:
 - `OPENAI_API_KEY` (only needed if you set `WIKI_SELECTOR_MODEL` to `gpt-*`)
-- `WIKI_SELECTOR_MODEL` / `WIKI_ANSWERER_MODEL` (answerer default: `claude-sonnet-5-5`)
+- `WIKI_SELECTOR_MODEL` / `WIKI_ANSWERER_MODEL` (defaults: `claude-haiku-5-5` / `claude-sonnet-5-5`)
 
 ## Dev Without Docker
 
